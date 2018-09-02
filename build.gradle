@@ -1,0 +1,29 @@
+buildscript {
+	repositories {
+		mavenCentral()
+	}
+	dependencies {
+		classpath("org.springframework.boot:spring-boot-gradle-plugin:2.0.3.RELEASE")
+	}
+}
+
+apply plugin: 'java'
+apply plugin: 'eclipse'
+apply plugin: 'org.springframework.boot'
+apply plugin: 'io.spring.dependency-management'
+
+repositories {
+    // You can declare any Maven/Ivy/file repository here.
+    mavenCentral()
+}
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+dependencies {
+    // https://mvnrepository.com/artifact/org.springframework.integration/spring-integration-core
+	compile group: 'org.springframework.integration', name: 'spring-integration-core', version: '4.3.5.RELEASE'
+	compile group: 'org.springframework.integration', name: 'spring-integration-file', version: '4.3.5.RELEASE'
+	compile group: 'org.springframework.boot', name: 'spring-boot-starter-logging', version: '2.0.4.RELEASE'
+	compile("org.springframework.boot:spring-boot-starter")
+}
