@@ -14,36 +14,44 @@ import org.springframework.integration.annotation.InboundChannelAdapter;
 import org.springframework.integration.annotation.Poller;
 import org.springframework.integration.annotation.ServiceActivator;
 import org.springframework.integration.annotation.Splitter;
+import org.springframework.integration.channel.DirectChannel;
 import org.springframework.integration.config.EnableIntegration;
 import org.springframework.integration.core.MessageSource;
 import org.springframework.integration.expression.ValueExpression;
 import org.springframework.integration.file.FileReadingMessageSource;
 import org.springframework.integration.file.filters.AcceptOnceFileListFilter;
 import org.springframework.integration.file.splitter.FileSplitter;
-import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHandler;
 
+import com.spring.integration.example.utils.InputFileConstants;
+
+/**
+ * The Class BasicIntegrationConfig.
+ */
 @EnableIntegration	// designates this class as a Spring Integration configuration.
 @Configuration
 public class BasicIntegrationConfig {
 
+	/** The logger. */
 	private static Logger LOGGER = LoggerFactory.getLogger(BasicIntegrationConfig.class);
-
-	public String INPUT_DIR = "F:\\Shwetali Office\\SampleJavaFiles\\";
-	public String OUTPUT_DIR = "F:\\Shwetali Office\\SampleJavaFiles\\DestinationFolder\\";
-	public String FILE_PATTERN = "*.txt";
-
 
 	/*The org.springframework.integration.Message interface defines the spring Message: 
 	 * the unit of data transfer within a Spring Integration context.
+	 * This bean is initialized by Spring Integration. (not a compulsory bean)
 	 */
-	/*@Bean
+	@Bean
 	public MessageChannel newFileChannel() {
 		LOGGER.info("-----------Inside Message Channel");
 		return new DirectChannel();
-	}*/
+	}
 
 
+	/**
+	 * File reading message source.
+	 *
+	 * @return the message source
+	 */
 	/*A channel in Spring Integration (and indeed, EAI) is the basic plumbing in an integration architecture. 
 	 * It’s the pipe by which messages are relayed from one system to another.
 	 */
@@ -52,8 +60,8 @@ public class BasicIntegrationConfig {
 	public MessageSource<File> fileReadingMessageSource() {
 		LOGGER.info("------------ Inside Message Source - @InboundChannelAdapter");
 		FileReadingMessageSource sourceReader = new FileReadingMessageSource();
- 		LOGGER.info("-----------Set file directory to read file");
-		sourceReader.setDirectory(new File(INPUT_DIR));
+		LOGGER.info("-----------Set file directory to read file");
+		sourceReader.setDirectory(new File(InputFileConstants.INPUT_DIR));
 		sourceReader.setFilter(new AcceptOnceFileListFilter<>());
 		return sourceReader;
 	}
@@ -64,18 +72,27 @@ public class BasicIntegrationConfig {
 		LOGGER.info("------------ Inside @Transformer");
 		return new FileToStringTransformer();
 	}*/
-	
-	@Splitter(inputChannel = "newfileChannel") 
+
+	/**
+	 * File splitter.
+	 *
+	 * @return the file splitter
+	 */
 	@Bean
+	@Splitter(inputChannel = "newfileChannel") 
 	public FileSplitter fileSplitter() {
 		LOGGER.info("------------ Inside @Splitter");
 		FileSplitter splitter = new FileSplitter(true, false);
 		splitter.setApplySequence(true);
-		System.out.println("Splitter Count: " + splitter.getActiveCount());
 		splitter.setOutputChannelName("fileSplit");
 		return splitter;
 	}
 
+	/**
+	 * Chunker.
+	 *
+	 * @return the aggregating message handler
+	 */
 	@Bean
 	@ServiceActivator(inputChannel = "fileSplit")
 	public AggregatingMessageHandler chunker() {
@@ -84,19 +101,25 @@ public class BasicIntegrationConfig {
 		aggregator.setReleaseStrategy(new MessageCountReleaseStrategy(5));
 		aggregator.setExpireGroupsUponCompletion(true);
 		aggregator.setGroupTimeoutExpression(new ValueExpression<>(100L));
-	    aggregator.setSendPartialResultOnExpiry(true);
+		aggregator.setSendPartialResultOnExpiry(true);
 		aggregator.setOutputChannelName("data");
 		LOGGER.info("------------ Aggregating complete");
-		
+
 		return aggregator;
 	}
-	
-	@Bean
-	@ServiceActivator(inputChannel = "data")
-	public MessageHandler handler() {
+
+	/**
+	 * Handler.
+	 *
+	 * @return the message handler
+	 */
+	//@Bean
+	//@ServiceActivator(inputChannel = "data")
+	/*public MessageHandler handler() {
 		LOGGER.info("------------ Inside @ServiceActivator");
 		return new MessageHandler() {
 
+			@SuppressWarnings("unchecked")
 			@Override
 			public void handleMessage(Message<?> message) {
 				LOGGER.info("Inside handleMessage method");
@@ -105,16 +128,19 @@ public class BasicIntegrationConfig {
 				LOGGER.info("Message Payload : {}, List Size: {}", strings, strings.size());
 			}
 		};
-	}
-	
-	/*@Bean
-	@ServiceActivator(inputChannel = "serviceInput")
-	public MessageHandler fileWritingMessageHandler() {
-		System.out.println("----------Inside Message Handler");
-		FileWritingMessageHandler handler = new FileWritingMessageHandler(new File(OUTPUT_DIR));
-		handler.setFileExistsMode(FileExistsMode.REPLACE);
-		handler.setExpectReply(false);
-		return handler;
 	}*/
+
+	@SuppressWarnings("unchecked")
+	@Bean
+	@ServiceActivator(inputChannel = "data")
+	public MessageHandler handler() {
+		LOGGER.info("------------ Inside @ServiceActivator");
+		return message -> {
+			LOGGER.info("Inside handleMessage method");
+			List<String> strings = (List<String>) message.getPayload();
+			LOGGER.info("Message Headers : {}", message.getHeaders());
+			LOGGER.info("Message Payload : {}, List Size: {}", strings, strings.size());
+		};
+	}
 
 }
